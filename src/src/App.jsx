@@ -561,15 +561,15 @@ export default function MizuApp() {
         .replace(/[¥￥円\s　,，]+/g, " ")
         .trim() || "不明";
 
-      // 収入かどうか判定
-      const isIncome = /収入|入金|給与|給料|ボーナス|賞与|振込|タダカヨ|売上|報酬/.test(line);
-
       results.push({
         tempId: Date.now() + Math.random(),
         name, amount, date,
-        category: isIncome ? "給料" : guessCategory(name),
-        type: isIncome ? "income" : "expense",
-        payment, pet:"共通", memo:"", checked:true,
+        category: guessCategory(name),
+        type: "expense",
+        payment,
+        pet: "共通",
+        memo: "",
+        checked: true,
       });
     });
     setParsedTxs(results);
@@ -1064,9 +1064,9 @@ export default function MizuApp() {
 
         {/* ═══ レポート ═══ */}
         {screen === "report" && (() => {
-          // 過去12ヶ月のデータを生成
-          const months12 = [];
-          for (let i = 11; i >= 0; i--) {
+          // 過去6ヶ月のデータを生成
+          const months6 = [];
+          for (let i = 5; i >= 0; i--) {
             const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
             const y = d.getFullYear(), m = d.getMonth() + 1;
             const mTx = txList.filter(t => {
@@ -1075,16 +1075,9 @@ export default function MizuApp() {
             });
             const inc = mTx.filter(t=>t.amount>0).reduce((s,t)=>s+t.amount,0);
             const exp = mTx.filter(t=>t.amount<0).reduce((s,t)=>s+Math.abs(t.amount),0);
-            // 収入カテゴリ別集計
-            const incByCat = {};
-            mTx.filter(t=>t.amount>0).forEach(t=>{
-              incByCat[t.category] = (incByCat[t.category]||0) + t.amount;
-            });
-            months12.push({ label:`${m}月`, y, m, inc, exp, bal: inc-exp, incByCat });
+            months6.push({ label:`${m}月`, y, m, inc, exp, bal: inc-exp });
           }
-          const months6 = months12.slice(6); // 後半6ヶ月（後方互換）
-          const maxVal = Math.max(...months12.flatMap(d=>[d.inc, d.exp]), 1);
-          const maxVal6 = Math.max(...months6.flatMap(d=>[d.inc, d.exp]), 1);
+          const maxVal = Math.max(...months6.flatMap(d=>[d.inc, d.exp]), 1);
 
           // 今月カテゴリ集計
           const curMTx = txList.filter(t => {
@@ -1115,62 +1108,44 @@ export default function MizuApp() {
             </div>
             <div style={s.scroll}>
 
-              {/* 12ヶ月サマリー */}
+              {/* 6ヶ月サマリー */}
               <div style={{ ...s.summaryCard, marginTop:14 }}>
-                <p style={s.summaryLbl}>過去12ヶ月の合計</p>
+                <p style={s.summaryLbl}>過去6ヶ月の合計</p>
                 <div style={s.summaryRow}>
-                  {[
-                    ["収入",  months12.reduce((s,d)=>s+d.inc,0)],
-                    ["支出",  months12.reduce((s,d)=>s+d.exp,0)],
-                    ["月平均支出", Math.round(months12.reduce((s,d)=>s+d.exp,0)/12)],
-                  ].map(([l,v])=>(
+                  {[["収入",total6inc],["支出",total6exp],["月平均支出",avgExp]].map(([l,v])=>(
                     <div key={l} style={s.summaryCell}>
                       <p style={s.cellLbl}>{l}</p>
-                      <p style={{ ...s.cellVal, fontSize: l==="月平均支出"?10:13 }}>{fmtAmt(v)}</p>
+                      <p style={{ ...s.cellVal, fontSize: l==="月平均支出"?11:13 }}>{fmtAmt(v)}</p>
                     </div>
                   ))}
                 </div>
               </div>
 
-              {/* 棒グラフ：月別収支（過去12ヶ月・金額表示付き） */}
+              {/* 棒グラフ：月別収支（過去6ヶ月） */}
               <div style={s.card}>
-                <p style={s.cardTitle}>月別収支（過去12ヶ月）</p>
-                <div style={{ display:"flex", gap:3, marginBottom:6, overflowX:"auto" }}>
-                  {months12.map((d,i) => {
+                <p style={s.cardTitle}>月別収支（過去6ヶ月）</p>
+                <div style={{ display:"flex", gap:6, marginBottom:10 }}>
+                  {months6.map((d,i) => {
                     const incH = maxVal > 0 ? Math.max(Math.round(d.inc/maxVal*80), d.inc>0?4:0) : 0;
                     const expH = maxVal > 0 ? Math.max(Math.round(d.exp/maxVal*80), d.exp>0?4:0) : 0;
                     return (
-                      <div key={i} style={{ minWidth:24, flex:1, display:"flex", flexDirection:"column", alignItems:"center" }}>
+                      <div key={i} style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center" }}>
+                        {/* バーエリア（高さ固定、下揃え） */}
                         <div style={{ width:"100%", height:90, display:"flex", alignItems:"flex-end",
-                          justifyContent:"center", gap:1 }}>
-                          <div style={{ width:"44%", height:incH, background:"#2a9d6e",
-                            borderRadius:"2px 2px 0 0", position:"relative" }}>
-                            {d.inc > 0 && incH > 20 && (
-                              <span style={{ position:"absolute", top:-14, left:"50%",
-                                transform:"translateX(-50%)", fontSize:7, color:"#2a9d6e",
-                                fontWeight:"700", whiteSpace:"nowrap" }}>
-                                {Math.round(d.inc/10000)}万
-                              </span>
-                            )}
-                          </div>
-                          <div style={{ width:"44%", height:expH, background:"#e05555",
-                            borderRadius:"2px 2px 0 0", position:"relative" }}>
-                            {d.exp > 0 && expH > 20 && (
-                              <span style={{ position:"absolute", top:-14, left:"50%",
-                                transform:"translateX(-50%)", fontSize:7, color:"#e05555",
-                                fontWeight:"700", whiteSpace:"nowrap" }}>
-                                {Math.round(d.exp/10000)}万
-                              </span>
-                            )}
-                          </div>
+                          justifyContent:"center", gap:2 }}>
+                          <div style={{ width:"38%", height:incH, minHeight:0,
+                            background:"#2a9d6e", borderRadius:"3px 3px 0 0" }}/>
+                          <div style={{ width:"38%", height:expH, minHeight:0,
+                            background:"#e05555", borderRadius:"3px 3px 0 0" }}/>
                         </div>
+                        {/* 月ラベル */}
                         <div style={{ height:1, width:"100%", background:"rgba(158,219,232,0.4)" }}/>
-                        <span style={{ fontSize:8, color:"#4a7a80", marginTop:3 }}>{d.label}</span>
+                        <span style={{ fontSize:9, color:"#4a7a80", marginTop:4 }}>{d.label}</span>
                       </div>
                     );
                   })}
                 </div>
-                <div style={{ display:"flex", gap:16, justifyContent:"center", marginTop:4 }}>
+                <div style={{ display:"flex", gap:16, justifyContent:"center" }}>
                   {[["#2a9d6e","収入"],["#e05555","支出"]].map(([c,l])=>(
                     <div key={l} style={{ display:"flex", alignItems:"center", gap:5 }}>
                       <div style={{ width:10, height:10, borderRadius:2, background:c }}/>
@@ -1179,54 +1154,6 @@ export default function MizuApp() {
                   ))}
                 </div>
               </div>
-
-              {/* 収入カテゴリ別推移（12ヶ月） */}
-              {(() => {
-                const incCats = ["給料","ボーナス","タダカヨ収入","その他"];
-                const catColors = { 給料:"#2a9d6e", ボーナス:"#3bbf8a", タダカヨ収入:"#7EE0C1", その他:"#9EDBE8" };
-                const hasData = months12.some(d => Object.values(d.incByCat).length > 0);
-                if (!hasData) return null;
-                return (
-                  <div style={s.card}>
-                    <p style={s.cardTitle}>収入内訳推移（過去12ヶ月）</p>
-                    {/* 凡例 */}
-                    <div style={{ display:"flex", gap:10, flexWrap:"wrap", marginBottom:10 }}>
-                      {incCats.map(c => (
-                        <div key={c} style={{ display:"flex", alignItems:"center", gap:4 }}>
-                          <div style={{ width:10, height:10, borderRadius:2, background:catColors[c] }}/>
-                          <span style={{ fontSize:10, color:"#4a7a80" }}>{c}</span>
-                        </div>
-                      ))}
-                    </div>
-                    {/* 月別テーブル */}
-                    <div style={{ overflowX:"auto" }}>
-                      <table style={{ width:"100%", borderCollapse:"collapse", fontSize:11 }}>
-                        <thead>
-                          <tr>
-                            <th style={{ textAlign:"left", color:"#4a7a80", padding:"4px 2px", fontWeight:"600" }}>月</th>
-                            {incCats.map(c => (
-                              <th key={c} style={{ textAlign:"right", color:catColors[c], padding:"4px 2px", fontWeight:"600" }}>{c}</th>
-                            ))}
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {months12.filter(d => Object.values(d.incByCat).length > 0).map((d,i) => (
-                            <tr key={i} style={{ borderTop:"1px solid rgba(158,219,232,0.2)" }}>
-                              <td style={{ color:"#1a3a3f", padding:"6px 2px", fontWeight:"600" }}>{d.y}/{d.label}</td>
-                              {incCats.map(c => (
-                                <td key={c} style={{ textAlign:"right", color: d.incByCat[c] ? catColors[c] : "#ccc",
-                                  padding:"6px 2px", fontWeight: d.incByCat[c] ? "700" : "400" }}>
-                                  {d.incByCat[c] ? fmtAmt(d.incByCat[c]) : "-"}
-                                </td>
-                              ))}
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                );
-              })()}
 
               {/* カテゴリ別ランキング */}
               <div style={s.card}>
@@ -1257,19 +1184,19 @@ export default function MizuApp() {
 
               {/* 月別詳細テーブル */}
               <div style={s.card}>
-                <p style={s.cardTitle}>月別サマリー（過去12ヶ月）</p>
+                <p style={s.cardTitle}>月別サマリー</p>
                 <div style={{ display:"flex", borderBottom:"1px solid rgba(158,219,232,0.3)", paddingBottom:6, marginBottom:4 }}>
                   {["月","収入","支出","収支"].map(h=>(
                     <span key={h} style={{ flex:1, fontSize:10, color:"#4a7a80", fontWeight:"700", textAlign:"right",
                       ...(h==="月"?{textAlign:"left"}:{}) }}>{h}</span>
                   ))}
                 </div>
-                {[...months12].reverse().map((d,i)=>(
+                {[...months6].reverse().map((d,i)=>(
                   <div key={i} style={{ display:"flex", padding:"7px 0",
                     borderBottom:"1px solid rgba(158,219,232,0.15)" }}>
                     <span style={{ flex:1, fontSize:12, color:"#1a3a3f", fontWeight:"600" }}>{d.y}/{d.label}</span>
                     <span style={{ flex:1, fontSize:12, color:"#2a9d6e", textAlign:"right" }}>{fmtAmt(d.inc)}</span>
-                    <span style={{ flex:1, fontSize:12, color:"#e05555", textAlign:"right" }}>{fmtAmt(d.exp)}</span>
+                    <span style={{ flex:1, fontSize:12, color:"#006B78", textAlign:"right" }}>{fmtAmt(d.exp)}</span>
                     <span style={{ flex:1, fontSize:12, fontWeight:"700", textAlign:"right",
                       color: d.bal>=0?"#2a9d6e":"#d9534f" }}>
                       {d.bal>=0?"+":"-"}{fmtAmt(d.bal)}
@@ -1680,22 +1607,6 @@ export default function MizuApp() {
                   </button>
 
                   <div style={{ flex:1 }}>
-                    {/* 収入/支出切り替え */}
-                    <div style={{ display:"flex", gap:6, marginBottom:8 }}>
-                      {[["expense","支出"],["income","収入"]].map(([id, lbl]) => (
-                        <button key={id}
-                          style={{ flex:1, padding:"5px 0", borderRadius:8, border:"none",
-                            fontSize:12, fontWeight:"700", cursor:"pointer", fontFamily:"inherit",
-                            background: tx.type===id ? (id==="expense"?"#006B78":"#2a9d6e") : "rgba(158,219,232,0.3)",
-                            color: tx.type===id ? "#fff" : "#4a7a80" }}
-                          onClick={() => setParsedTxs(ps => ps.map((p,j) => j===i ? {
-                            ...p, type:id,
-                            category: id==="income" ? "その他" : p.category
-                          } : p))}>
-                          {lbl}
-                        </button>
-                      ))}
-                    </div>
                     {/* 店名 */}
                     <input
                       value={tx.name}
@@ -1725,7 +1636,7 @@ export default function MizuApp() {
                       value={tx.category}
                       onChange={e => setParsedTxs(ps => ps.map((p,j) => j===i ? {...p, category:e.target.value} : p))}
                       style={{ ...s.textInput, padding:"6px 10px", fontSize:12, marginTop:6, width:"100%" }}>
-                      {(tx.type==="income" ? CATEGORIES_INCOME : CATEGORIES_EXPENSE).map(c => <option key={c} value={c}>{c}</option>)}
+                      {CATEGORIES_EXPENSE.map(c => <option key={c} value={c}>{c}</option>)}
                     </select>
                     {/* 支払い方法 */}
                     <select
