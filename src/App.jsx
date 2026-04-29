@@ -686,7 +686,7 @@ export default function MizuApp() {
                 <div style={{ display:"flex", alignItems:"center", gap:8 }}>
                   <div style={{ width:32, height:32, borderRadius:10, background:"rgba(0,107,120,0.15)",
                     display:"flex", alignItems:"center", justifyContent:"center" }}>
-                    <span style={{ fontSize:16 }}>📌</span>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#006B78" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
                   </div>
                   <div style={{ textAlign:"left" }}>
                     <p style={{ fontSize:13, fontWeight:"700", color:"#006B78", margin:"0 0 1px" }}>
