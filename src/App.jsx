@@ -1183,7 +1183,7 @@ export default function MizuApp() {
               {/* 収入カテゴリ別推移（12ヶ月） */}
               {(() => {
                 const incCats = ["給料","ボーナス","タダカヨ収入","その他"];
-                const catColors = { 給料:"#2a9d6e", ボーナス:"#3bbf8a", タダカヨ収入:"#7EE0C1", その他:"#9EDBE8" };
+                const catColors = { 給料:"#2a9d6e", ボーナス:"#1a7a52", タダカヨ収入:"#006B78", その他:"#4a7a80" };
                 const hasData = months12.some(d => Object.values(d.incByCat).length > 0);
                 if (!hasData) return null;
                 return (
