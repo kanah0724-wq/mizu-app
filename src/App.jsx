@@ -260,10 +260,14 @@ export default function MizuApp() {
     try { return JSON.parse(localStorage.getItem("mizu_pays")) || ["現金","三井住友カード","楽天カード","PayPay"]; } catch(e) { return ["現金","三井住友カード","楽天カード","PayPay"]; }
   });
   const [showResetConfirm, setShowResetConfirm] = useState(false);
-  const [toast, setToast] = useState(""); // 保存完了トースト
-  // 設定画面用ローカル編集state
+  const [toast, setToast] = useState("");
   const [editPetNames, setEditPetNames] = useState(null);
   const [editPayNames, setEditPayNames] = useState(null);
+  // 固定費リスト
+  const [fixedList, setFixedList] = useState(() => {
+    try { return JSON.parse(localStorage.getItem("mizu_fixed")) || []; } catch(e) { return []; }
+  });
+  const [showFixedAlert, setShowFixedAlert] = useState(false);
   const [form,  setForm]  = useState({ ...EMPTY_FORM });
   const [error, setError] = useState({});
 
@@ -398,7 +402,43 @@ export default function MizuApp() {
     { id:"settings", label:"設定",     Icon:SettingsIcon },
   ];
 
-  function showToast(msg) {
+  function saveFixedList(list) {
+    setFixedList(list);
+    try { localStorage.setItem("mizu_fixed", JSON.stringify(list)); } catch(e) {}
+  }
+
+  // 今月未登録の固定費を取得
+  function getUnregisteredFixed() {
+    const y = now.getFullYear(), m = now.getMonth() + 1;
+    return fixedList.filter(f => {
+      if (!f.name || !f.amount) return false;
+      // 今月すでに登録済みか確認（同じ名前・同じ月）
+      const alreadyDone = txList.some(t => {
+        const [ty, tm] = t.date.split("-").map(Number);
+        return ty === y && tm === m && t.name === f.name;
+      });
+      return !alreadyDone;
+    });
+  }
+
+  // 固定費を一括登録
+  function registerFixed(items) {
+    const today = todayStr();
+    const newTxs = items.map(f => ({
+      id: Date.now() + Math.random(),
+      type: "expense",
+      amount: -Math.abs(Number(f.amount)),
+      category: f.category || "固定費",
+      name: f.name,
+      date: today,
+      payment: f.payment || "",
+      pet: f.pet || "共通",
+      memo: "固定費自動登録",
+    }));
+    saveTx([...newTxs, ...txList]);
+    setShowFixedAlert(false);
+    showToast(`${newTxs.length}件の固定費を登録しました`);
+  }
     setToast(msg);
     setTimeout(() => setToast(""), 2000);
   }
@@ -635,6 +675,31 @@ export default function MizuApp() {
             <div/>
           </div>
           <div style={s.scroll}>
+            {/* 固定費未登録バナー */}
+            {getUnregisteredFixed().length > 0 && (
+              <button
+                style={{ display:"flex", alignItems:"center", justifyContent:"space-between",
+                  width:"100%", margin:"12px 0 0", padding:"12px 16px", borderRadius:16,
+                  background:"rgba(0,107,120,0.08)", border:"1.5px solid rgba(0,107,120,0.2)",
+                  cursor:"pointer", fontFamily:"inherit" }}
+                onClick={() => setShowFixedAlert(true)}>
+                <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+                  <div style={{ width:32, height:32, borderRadius:10, background:"rgba(0,107,120,0.15)",
+                    display:"flex", alignItems:"center", justifyContent:"center" }}>
+                    <span style={{ fontSize:16 }}>📌</span>
+                  </div>
+                  <div style={{ textAlign:"left" }}>
+                    <p style={{ fontSize:13, fontWeight:"700", color:"#006B78", margin:"0 0 1px" }}>
+                      今月の固定費が未登録です
+                    </p>
+                    <p style={{ fontSize:11, color:"#4a7a80", margin:0 }}>
+                      {getUnregisteredFixed().length}件 · タップして登録
+                    </p>
+                  </div>
+                </div>
+                <span style={{ fontSize:18, color:"#006B78" }}>›</span>
+              </button>
+            )}
             <div style={s.monthNav}>
               <button style={s.arrowBtn} onClick={prevMonth}>‹</button>
               <span style={s.monthLbl}>{year}年{month}月</span>
@@ -1851,6 +1916,74 @@ export default function MizuApp() {
               )}
             </div>
 
+            {/* 固定費リスト */}
+            <div style={s.card}>
+              <p style={s.cardTitle}>固定費リスト</p>
+              <p style={{ fontSize:11, color:"#7aacb5", margin:"0 0 12px" }}>
+                毎月かかる費用を登録しておくと、未登録のときにお知らせします
+              </p>
+              {fixedList.map((f, i) => (
+                <div key={i} style={{ background:"rgba(0,107,120,0.04)", borderRadius:12,
+                  padding:"12px", marginBottom:10, border:"1px solid rgba(158,219,232,0.3)" }}>
+                  <div style={{ display:"flex", justifyContent:"space-between", marginBottom:8 }}>
+                    <p style={{ fontSize:12, fontWeight:"700", color:"#4a7a80", margin:0 }}>固定費 {i+1}</p>
+                    <button style={{ background:"none", border:"none", color:"#d9534f",
+                      fontSize:13, cursor:"pointer", fontFamily:"inherit" }}
+                      onClick={() => {
+                        const n = [...fixedList];
+                        n.splice(i, 1);
+                        saveFixedList(n);
+                        showToast("削除しました");
+                      }}>削除</button>
+                  </div>
+                  <input placeholder="名前（例：通信費・家賃）" value={f.name}
+                    onChange={e => {
+                      const n = [...fixedList]; n[i] = {...n[i], name:e.target.value}; saveFixedList(n);
+                    }}
+                    style={{ ...s.textInput, marginBottom:6 }}/>
+                  <div style={{ display:"flex", gap:6, marginBottom:6 }}>
+                    <div style={{ display:"flex", alignItems:"center", gap:4, flex:1 }}>
+                      <span style={{ fontSize:12, color:"#4a7a80", flexShrink:0 }}>¥</span>
+                      <input type="text" inputMode="numeric" placeholder="金額" value={f.amount}
+                        onChange={e => {
+                          const n = [...fixedList]; n[i] = {...n[i], amount:e.target.value.replace(/[^0-9]/g,"")}; saveFixedList(n);
+                        }}
+                        style={{ ...s.textInput, margin:0 }}/>
+                    </div>
+                  </div>
+                  <select value={f.category||"固定費"}
+                    onChange={e => {
+                      const n = [...fixedList]; n[i] = {...n[i], category:e.target.value}; saveFixedList(n);
+                    }}
+                    style={{ ...s.textInput, marginBottom:6 }}>
+                    {CATEGORIES_EXPENSE.map(c => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                  <select value={f.payment||""}
+                    onChange={e => {
+                      const n = [...fixedList]; n[i] = {...n[i], payment:e.target.value}; saveFixedList(n);
+                    }}
+                    style={{ ...s.textInput, marginBottom:6 }}>
+                    <option value="">支払い方法（任意）</option>
+                    {payNames.map(p => <option key={p} value={p}>{p}</option>)}
+                  </select>
+                  <div style={{ display:"flex", gap:6 }}>
+                    {PETS.map(p => (
+                      <button key={p}
+                        style={{ ...s.petBtn, padding:"6px 0", fontSize:11,
+                          ...(f.pet===p ? s.petBtnOn : {}) }}
+                        onClick={() => {
+                          const n = [...fixedList]; n[i] = {...n[i], pet:p}; saveFixedList(n);
+                        }}>{p}</button>
+                    ))}
+                  </div>
+                </div>
+              ))}
+              <button style={{ ...s.ghostBtn, marginTop:4 }}
+                onClick={() => saveFixedList([...fixedList, { name:"", amount:"", category:"固定費", payment:"", pet:"共通" }])}>
+                ＋ 固定費を追加
+              </button>
+            </div>
+
             {/* データ管理 */}
             <div style={s.card}>
               <p style={s.cardTitle}>データ管理</p>
@@ -1919,6 +2052,34 @@ export default function MizuApp() {
             <div style={{ height:100 }}/>
           </div>
         </>}
+
+        {/* ═══ 固定費登録モーダル ═══ */}
+        {showFixedAlert && (
+          <div style={s.modalOverlay}>
+            <div style={{ ...s.modalBox, maxHeight:"70vh", overflowY:"auto" }}>
+              <p style={s.modalTitle}>今月の固定費を登録</p>
+              <p style={s.modalSub}>以下の固定費がまだ今月未登録です</p>
+              {getUnregisteredFixed().map((f, i) => (
+                <div key={i} style={{ display:"flex", justifyContent:"space-between",
+                  alignItems:"center", padding:"10px 0",
+                  borderBottom:"1px solid rgba(158,219,232,0.2)" }}>
+                  <div>
+                    <p style={{ fontSize:13, fontWeight:"600", color:"#1a3a3f", margin:"0 0 2px" }}>{f.name}</p>
+                    <p style={{ fontSize:11, color:"#4a7a80", margin:0 }}>{f.category} · {f.pet}</p>
+                  </div>
+                  <span style={{ fontSize:14, fontWeight:"700", color:"#e05555" }}>{fmtAmt(f.amount)}</span>
+                </div>
+              ))}
+              <button style={{ ...s.primaryBtn, marginTop:16 }}
+                onClick={() => registerFixed(getUnregisteredFixed())}>
+                ✓ まとめて登録する
+              </button>
+              <button style={s.ghostBtn} onClick={() => setShowFixedAlert(false)}>
+                あとで登録する
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* ═══ リセット確認モーダル ═══ */}
         {showResetConfirm && (
