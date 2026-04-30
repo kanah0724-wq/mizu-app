@@ -247,6 +247,8 @@ export default function MizuApp() {
   const [openCat, setOpenCat]   = useState(null);
   const [openPay, setOpenPay]   = useState(null);
   const [showAddMenu, setShowAddMenu] = useState(false);
+  const [showAllTx, setShowAllTx] = useState(false);
+  const [splash, setSplash] = useState(true);
   const [receiptImg, setReceiptImg]   = useState(null);
   const [analyzing,  setAnalyzing]    = useState(false);
   const [pasteText,  setPasteText]    = useState("");
@@ -276,6 +278,11 @@ export default function MizuApp() {
       const saved = localStorage.getItem("mizu_tx");
       if (saved) setTxList(JSON.parse(saved));
     } catch(e) {}
+  }, []);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setSplash(false), 2000);
+    return () => clearTimeout(timer);
   }, []);
 
   function saveTx(list) {
@@ -309,6 +316,7 @@ export default function MizuApp() {
     setEditId(null);
     setTab("home");
     setScreen("home");
+    setShowAllTx(false);
   }
 
   function goInput() {
@@ -656,6 +664,50 @@ export default function MizuApp() {
     setScreen("home");
   }
 
+  if (splash) {
+    return (
+      <div style={{ minHeight:"100vh",
+        background:"linear-gradient(160deg,#006B78 0%,#4DB6C6 60%,#7EE0C1 100%)",
+        display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center",
+        fontFamily:"'M PLUS 1p','Hiragino Sans',sans-serif" }}>
+        <style>{`
+          @import url('https://fonts.googleapis.com/css2?family=M+PLUS+1p:wght@400;700;800&display=swap');
+          @keyframes dropIn {
+            0% { transform: translateY(-40px) scale(0.8); opacity:0; }
+            60% { transform: translateY(8px) scale(1.05); opacity:1; }
+            100% { transform: translateY(0) scale(1); opacity:1; }
+          }
+          @keyframes fadeUp {
+            0% { opacity:0; transform:translateY(16px); }
+            100% { opacity:1; transform:translateY(0); }
+          }
+          @keyframes pulse {
+            0%,100% { opacity:0.5; transform:scale(1); }
+            50% { opacity:1; transform:scale(1.15); }
+          }
+        `}</style>
+        <div style={{ animation:"dropIn 0.7s cubic-bezier(.34,1.56,.64,1) forwards" }}>
+          <svg width="90" height="90" viewBox="0 0 24 24" fill="none"
+            stroke="#fff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M12 2C12 2 5 10 5 15a7 7 0 0014 0C19 10 12 2 12 2z" fill="rgba(255,255,255,0.25)"/>
+          </svg>
+        </div>
+        <p style={{ fontSize:36, fontWeight:"800", color:"#fff", margin:"12px 0 4px",
+          letterSpacing:2, animation:"fadeUp 0.5s 0.4s ease forwards", opacity:0 }}>MIZU</p>
+        <p style={{ fontSize:14, color:"rgba(255,255,255,0.75)", margin:0,
+          animation:"fadeUp 0.5s 0.6s ease forwards", opacity:0 }}>家計簿アプリ</p>
+        <div style={{ display:"flex", gap:8, marginTop:40,
+          animation:"fadeUp 0.5s 0.8s ease forwards", opacity:0 }}>
+          {[0,1,2].map(i => (
+            <div key={i} style={{ width:8, height:8, borderRadius:"50%",
+              background:"rgba(255,255,255,0.7)",
+              animation:`pulse 1.2s ${i*0.2}s ease-in-out infinite` }}/>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div style={s.root}>
       <style>{`
@@ -753,31 +805,42 @@ export default function MizuApp() {
               </div>
               {viewTx.length === 0
                 ? <p style={s.emptyMsg}>＋ボタンから追加してください</p>
-                : viewTx.slice(0,8).map((tx, i) => (
-                    <button key={tx.id}
-                      style={{ ...s.txRow, borderTop: i===0?"none":"1px solid rgba(158,219,232,0.2)",
-                        width:"100%", background:"none", border:"none", cursor:"pointer",
-                        fontFamily:"inherit", textAlign:"left",
-                        borderTop: i===0?"none":"1px solid rgba(158,219,232,0.2)" }}
-                      onClick={() => goEdit(tx)}>
-                      <div style={{ ...s.txIconBox, background: CAT_COLOR[tx.category]||"#CDEEF5", color:"#fff" }}>
-                        {CAT_ICON[tx.category]}
-                      </div>
-                      <div style={{ flex:1 }}>
-                        <p style={s.txName}>{tx.name}</p>
-                        <div style={{ display:"flex", gap:4 }}>
-                          <span style={s.catBadge}>{tx.category}</span>
-                          <span style={s.petBadge}>{tx.pet}</span>
+                : <>
+                    {(showAllTx ? viewTx : viewTx.slice(0,8)).map((tx, i) => (
+                      <button key={tx.id}
+                        style={{ ...s.txRow, borderTop: i===0?"none":"1px solid rgba(158,219,232,0.2)",
+                          width:"100%", background:"none", border:"none", cursor:"pointer",
+                          fontFamily:"inherit", textAlign:"left",
+                          borderTop: i===0?"none":"1px solid rgba(158,219,232,0.2)" }}
+                        onClick={() => goEdit(tx)}>
+                        <div style={{ ...s.txIconBox, background: CAT_COLOR[tx.category]||"#CDEEF5", color:"#fff" }}>
+                          {CAT_ICON[tx.category]}
                         </div>
-                      </div>
-                      <div style={{ textAlign:"right" }}>
-                        <p style={{ ...s.txAmt, color: tx.amount<0?"#e05555":"#2a9d6e" }}>
-                          {tx.amount<0?"-":"+"}{fmtAmt(tx.amount)}
-                        </p>
-                        <p style={s.txDate}>{fmtDate(tx.date).slice(5)}</p>
-                      </div>
-                    </button>
-                  ))
+                        <div style={{ flex:1 }}>
+                          <p style={s.txName}>{tx.name}</p>
+                          <div style={{ display:"flex", gap:4 }}>
+                            <span style={s.catBadge}>{tx.category}</span>
+                            <span style={s.petBadge}>{tx.pet}</span>
+                          </div>
+                        </div>
+                        <div style={{ textAlign:"right" }}>
+                          <p style={{ ...s.txAmt, color: tx.amount<0?"#e05555":"#2a9d6e" }}>
+                            {tx.amount<0?"-":"+"}{fmtAmt(tx.amount)}
+                          </p>
+                          <p style={s.txDate}>{fmtDate(tx.date).slice(5)}</p>
+                        </div>
+                      </button>
+                    ))}
+                    {viewTx.length > 8 && (
+                      <button
+                        style={{ width:"100%", padding:"12px 0", background:"none", border:"none",
+                          borderTop:"1px solid rgba(158,219,232,0.2)", cursor:"pointer",
+                          fontSize:13, fontWeight:"700", color:"#006B78", fontFamily:"inherit" }}
+                        onClick={() => setShowAllTx(v => !v)}>
+                        {showAllTx ? "▲ 閉じる" : `▼ もっと見る（残り${viewTx.length - 8}件）`}
+                      </button>
+                    )}
+                  </>
               }
             </div>
             <div style={{ height:100 }}/>
