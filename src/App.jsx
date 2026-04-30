@@ -659,6 +659,7 @@ export default function MizuApp() {
   return (
     <div style={s.root}>
       <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=M+PLUS+1p:wght@400;500;700;800&display=swap');
         @keyframes spin  { to { transform: rotate(360deg); } }
         @keyframes wave1 { 0%,100%{ transform:translateX(0) translateY(0); } 50%{ transform:translateX(40px) translateY(-20px); } }
         @keyframes wave2 { 0%,100%{ transform:translateX(0) translateY(0); } 50%{ transform:translateX(-30px) translateY(-15px); } }
@@ -2200,7 +2201,7 @@ const s = {
   root:{ minHeight:"100vh",
     background:"linear-gradient(160deg,#d0f0f7 0%,#b8e8f3 30%,#9EDBE8 60%,#7cc8d8 100%)",
     display:"flex", alignItems:"center", justifyContent:"center",
-    fontFamily:"'Noto Sans JP','Hiragino Sans',sans-serif",
+    fontFamily:"'M PLUS 1p','Hiragino Sans',sans-serif",
     position:"relative", padding:"24px 16px", overflow:"hidden" },
   bg1:{ position:"absolute", width:600, height:200,
     background:"rgba(255,255,255,0.18)",
