@@ -475,6 +475,50 @@ export default function MizuApp() {
     URL.revokeObjectURL(url);
   }
 
+  function importCSV(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      try {
+        const text = ev.target.result.replace(/^\uFEFF/, ""); // BOM除去
+        const lines = text.split("\n").filter(l => l.trim());
+        const header = lines[0];
+        const rows = lines.slice(1);
+        const imported = rows.map(row => {
+          // カンマ区切り（ダブルクォート対応）
+          const cols = row.match(/(".*?"|[^,]+)(?=,|$)/g) || row.split(",");
+          const clean = cols.map(c => c.replace(/^"|"$/g, "").trim());
+          const [date, name, amount, category, payment, pet, memo] = clean;
+          if (!date || !name || !amount) return null;
+          return {
+            id: Date.now() + Math.random(),
+            date: date || todayStr(),
+            name: name || "",
+            amount: Number(amount) || 0,
+            category: category || "その他",
+            payment: payment || "",
+            pet: pet || "共通",
+            memo: memo || "",
+            type: Number(amount) >= 0 ? "income" : "expense",
+          };
+        }).filter(Boolean);
+
+        if (imported.length === 0) {
+          alert("読み込める取引がありませんでした");
+          return;
+        }
+        // 既存データとマージ（重複はidで判断できないのでそのまま追加）
+        saveTx([...imported, ...txList]);
+        showToast(`${imported.length}件をインポートしました`);
+      } catch(err) {
+        alert("CSVの読み込みに失敗しました");
+      }
+      e.target.value = ""; // リセット
+    };
+    reader.readAsText(file, "UTF-8");
+  }
+
   function resetAll() {
     saveTx([]);
     setShowResetConfirm(false);
@@ -2085,6 +2129,35 @@ export default function MizuApp() {
                 </div>
                 <span style={{ fontSize:16, color:"#9EDBE8" }}>›</span>
               </button>
+
+              {/* CSVインポート */}
+              <label
+                style={{ display:"flex", alignItems:"center", justifyContent:"space-between",
+                  width:"100%", padding:"12px 0", cursor:"pointer",
+                  borderBottom:"1px solid rgba(158,219,232,0.2)" }}>
+                <input type="file" accept=".csv" style={{ display:"none" }} onChange={importCSV}/>
+                <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+                  <div style={{ width:36, height:36, borderRadius:10,
+                    background:"rgba(77,182,198,0.1)", display:"flex",
+                    alignItems:"center", justifyContent:"center" }}>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4DB6C6"
+                      strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+                      <polyline points="17 8 12 3 7 8"/>
+                      <line x1="12" y1="3" x2="12" y2="15"/>
+                    </svg>
+                  </div>
+                  <div style={{ textAlign:"left" }}>
+                    <p style={{ fontSize:13, fontWeight:"600", color:"#1a3a3f", margin:"0 0 1px" }}>
+                      CSVからインポート
+                    </p>
+                    <p style={{ fontSize:11, color:"#7aacb5", margin:0 }}>
+                      バックアップから復元
+                    </p>
+                  </div>
+                </div>
+                <span style={{ fontSize:16, color:"#9EDBE8" }}>›</span>
+              </label>
 
               {/* リセット */}
               <button
