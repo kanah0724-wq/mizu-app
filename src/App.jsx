@@ -1489,54 +1489,6 @@ export default function MizuApp() {
                 </div>
               </div>
 
-              {/* 収入カテゴリ別推移（12ヶ月） */}
-              {(() => {
-                const incCats = ["給料","ボーナス","タダカヨ収入","その他"];
-                const catColors = { 給料:"#2a9d6e", ボーナス:"#1a7a52", タダカヨ収入:"#006B78", その他:"#4a7a80" };
-                const hasData = months12.some(d => Object.values(d.incByCat).length > 0);
-                if (!hasData) return null;
-                return (
-                  <div style={s.card}>
-                    <p style={s.cardTitle}>収入内訳推移（過去12ヶ月）</p>
-                    {/* 凡例 */}
-                    <div style={{ display:"flex", gap:10, flexWrap:"wrap", marginBottom:10 }}>
-                      {incCats.map(c => (
-                        <div key={c} style={{ display:"flex", alignItems:"center", gap:4 }}>
-                          <div style={{ width:10, height:10, borderRadius:2, background:catColors[c] }}/>
-                          <span style={{ fontSize:10, color:"#4a7a80" }}>{c}</span>
-                        </div>
-                      ))}
-                    </div>
-                    {/* 月別テーブル */}
-                    <div style={{ overflowX:"auto" }}>
-                      <table style={{ width:"100%", borderCollapse:"collapse", fontSize:11 }}>
-                        <thead>
-                          <tr>
-                            <th style={{ textAlign:"left", color:"#4a7a80", padding:"4px 2px", fontWeight:"600" }}>月</th>
-                            {incCats.map(c => (
-                              <th key={c} style={{ textAlign:"right", color:catColors[c], padding:"4px 2px", fontWeight:"600" }}>{c}</th>
-                            ))}
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {months12.filter(d => Object.values(d.incByCat).length > 0).map((d,i) => (
-                            <tr key={i} style={{ borderTop:"1px solid rgba(158,219,232,0.2)" }}>
-                              <td style={{ color:"#1a3a3f", padding:"6px 2px", fontWeight:"600" }}>{d.y}/{d.label}</td>
-                              {incCats.map(c => (
-                                <td key={c} style={{ textAlign:"right", color: d.incByCat[c] ? catColors[c] : "#ccc",
-                                  padding:"6px 2px", fontWeight: d.incByCat[c] ? "700" : "400" }}>
-                                  {d.incByCat[c] ? fmtAmt(d.incByCat[c]) : "-"}
-                                </td>
-                              ))}
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                );
-              })()}
-
               {/* カテゴリ別ランキング */}
               <div style={s.card}>
                 <p style={s.cardTitle}>今月のカテゴリ別支出</p>
