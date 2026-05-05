@@ -249,6 +249,8 @@ export default function MizuApp() {
   const [showAddMenu, setShowAddMenu] = useState(false);
   const [showAllTx, setShowAllTx] = useState(false);
   const [splash, setSplash] = useState(true);
+  const [aiAnalysis, setAiAnalysis] = useState("");
+  const [aiLoading, setAiLoading] = useState(false);
   const [receiptImg, setReceiptImg]   = useState(null);
   const [analyzing,  setAnalyzing]    = useState(false);
   const [pasteText,  setPasteText]    = useState("");
@@ -460,6 +462,48 @@ export default function MizuApp() {
   function savePayNames(names) {
     setPayNames(names);
     try { localStorage.setItem("mizu_pays", JSON.stringify(names)); } catch(e) {}
+  }
+
+  async function analyzeReport(months12, catRanking, hongyoTotal, tadakayoTotal, grandTotal) {
+    setAiLoading(true);
+    setAiAnalysis("");
+    try {
+      const summary = months12.slice(-3).map(d =>
+        `${d.y}/${d.label}: 収入${fmtAmt(d.inc)} 支出${fmtAmt(d.exp)} 収支${fmtAmt(d.bal)}`
+      ).join("\n");
+      const cats = catRanking.slice(0,5).map(d => `${d.name}: ${fmtAmt(d.amt)}(${d.pct}%)`).join(", ");
+      const res = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: "claude-sonnet-4-20250514",
+          max_tokens: 1000,
+          messages: [{
+            role: "user",
+            content: `以下は家計簿アプリのデータです。やさしく、具体的にアドバイスしてください。200文字以内でお願いします。
+
+【直近3ヶ月の収支】
+${summary}
+
+【今月の支出カテゴリTOP5】
+${cats}
+
+【今年の収入内訳】
+本業: ${fmtAmt(hongyoTotal)}
+タダカヨ収入: ${fmtAmt(tadakayoTotal)}
+合計: ${fmtAmt(grandTotal)}
+
+家計の傾向と改善点を教えてください。`
+          }]
+        })
+      });
+      const data = await res.json();
+      setAiAnalysis(data.content?.[0]?.text || "分析できませんでした");
+    } catch(e) {
+      setAiAnalysis("エラーが発生しました。もう一度試してください。");
+    } finally {
+      setAiLoading(false);
+    }
   }
 
   function exportCSV() {
@@ -1280,6 +1324,15 @@ export default function MizuApp() {
           const total6exp = months6.reduce((s,d)=>s+d.exp,0);
           const avgExp    = Math.round(total6exp / 6);
 
+          // 年間収入内訳（AI分析用）
+          const yearTxAll = txList.filter(t => {
+            const [y] = t.date.split("-").map(Number);
+            return y === now.getFullYear() && t.amount > 0;
+          });
+          const hongyoTotal = yearTxAll.filter(t => t.category === "給料" || t.category === "ボーナス").reduce((s,t)=>s+t.amount,0);
+          const tadakayoTotal = yearTxAll.filter(t => t.category === "タダカヨ収入").reduce((s,t)=>s+t.amount,0);
+          const grandTotal = yearTxAll.reduce((s,t)=>s+t.amount,0);
+
           return <>
             <div style={s.header}>
               <div style={{ display:"flex", alignItems:"center", gap:8 }}>
@@ -1537,6 +1590,41 @@ export default function MizuApp() {
                     </span>
                   </div>
                 ))}
+              </div>
+
+              {/* AI分析 */}
+              <div style={s.card}>
+                <p style={s.cardTitle}>🤖 AI家計分析</p>
+                <p style={{ fontSize:12, color:"#7aacb5", margin:"0 0 12px" }}>
+                  直近3ヶ月のデータをもとにAIがアドバイスします
+                </p>
+                {aiLoading ? (
+                  <div style={{ textAlign:"center", padding:"20px 0" }}>
+                    <div style={s.loadingDot}/>
+                    <p style={{ fontSize:13, color:"#006B78", fontWeight:"600", margin:"12px 0 0" }}>
+                      分析中...
+                    </p>
+                  </div>
+                ) : aiAnalysis ? (
+                  <div>
+                    <div style={{ background:"rgba(0,107,120,0.05)", borderRadius:14,
+                      padding:"14px 16px", border:"1px solid rgba(158,219,232,0.4)",
+                      marginBottom:12 }}>
+                      <p style={{ fontSize:14, color:"#1a3a3f", lineHeight:1.7, margin:0 }}>
+                        {aiAnalysis}
+                      </p>
+                    </div>
+                    <button style={s.ghostBtn}
+                      onClick={() => analyzeReport(months12, catRanking, hongyoTotal, tadakayoTotal, grandTotal)}>
+                      もう一度分析する
+                    </button>
+                  </div>
+                ) : (
+                  <button style={s.primaryBtn}
+                    onClick={() => analyzeReport(months12, catRanking, hongyoTotal, tadakayoTotal, grandTotal)}>
+                    AIに分析してもらう ✨
+                  </button>
+                )}
               </div>
 
               {/* カテゴリ別明細（アコーディオン） */}
