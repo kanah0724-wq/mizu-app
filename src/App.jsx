@@ -1307,6 +1307,140 @@ export default function MizuApp() {
                 </div>
               </div>
 
+              {/* 年間収入内訳 */}
+              {(() => {
+                const yearTx = txList.filter(t => {
+                  const [y] = t.date.split("-").map(Number);
+                  return y === now.getFullYear() && t.amount > 0;
+                });
+                const hongyoTotal = yearTx
+                  .filter(t => t.category === "給料" || t.category === "ボーナス")
+                  .reduce((s, t) => s + t.amount, 0);
+                const tadakayoTotal = yearTx
+                  .filter(t => t.category === "タダカヨ収入")
+                  .reduce((s, t) => s + t.amount, 0);
+                const otherTotal = yearTx
+                  .filter(t => t.category !== "給料" && t.category !== "ボーナス" && t.category !== "タダカヨ収入")
+                  .reduce((s, t) => s + t.amount, 0);
+                const grandTotal = hongyoTotal + tadakayoTotal + otherTotal;
+
+                // 月別内訳
+                const monthlyData = [];
+                for (let m = 1; m <= 12; m++) {
+                  const mTx = txList.filter(t => {
+                    const [ty, tm] = t.date.split("-").map(Number);
+                    return ty === now.getFullYear() && tm === m && t.amount > 0;
+                  });
+                  const hongyo = mTx.filter(t => t.category === "給料" || t.category === "ボーナス").reduce((s,t)=>s+t.amount,0);
+                  const tadakayo = mTx.filter(t => t.category === "タダカヨ収入").reduce((s,t)=>s+t.amount,0);
+                  const total = mTx.reduce((s,t)=>s+t.amount,0);
+                  if (total > 0) monthlyData.push({ m, hongyo, tadakayo, total });
+                }
+
+                if (grandTotal === 0) return null;
+                return (
+                  <div style={s.card}>
+                    <p style={s.cardTitle}>{now.getFullYear()}年 収入内訳</p>
+
+                    {/* 合計サマリー */}
+                    <div style={{ background:"linear-gradient(135deg,#006B78,#4DB6C6)", borderRadius:16,
+                      padding:"16px", marginBottom:14 }}>
+                      <p style={{ fontSize:11, color:"rgba(255,255,255,0.75)", margin:"0 0 4px" }}>年間収入合計</p>
+                      <p style={{ fontSize:28, fontWeight:"800", color:"#fff", margin:"0 0 12px", letterSpacing:-1 }}>
+                        {fmtAmt(grandTotal)}
+                      </p>
+                      <div style={{ display:"flex", gap:8 }}>
+                        {[
+                          ["本業", hongyoTotal, "#7EE0C1"],
+                          ["タダカヨ", tadakayoTotal, "#9EDBE8"],
+                          ...(otherTotal > 0 ? [["その他", otherTotal, "#CDEEF5"]] : []),
+                        ].map(([label, val, color]) => (
+                          <div key={label} style={{ flex:1, background:"rgba(255,255,255,0.15)",
+                            borderRadius:10, padding:"8px 6px", textAlign:"center" }}>
+                            <p style={{ fontSize:10, color:"rgba(255,255,255,0.75)", margin:"0 0 2px" }}>{label}</p>
+                            <p style={{ fontSize:12, fontWeight:"700", color:"#fff", margin:0 }}>{fmtAmt(val)}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* 割合バー */}
+                    <div style={{ marginBottom:14 }}>
+                      <div style={{ display:"flex", height:12, borderRadius:6, overflow:"hidden", marginBottom:6 }}>
+                        {hongyoTotal > 0 && (
+                          <div style={{ width:`${Math.round(hongyoTotal/grandTotal*100)}%`,
+                            background:"#006B78" }}/>
+                        )}
+                        {tadakayoTotal > 0 && (
+                          <div style={{ width:`${Math.round(tadakayoTotal/grandTotal*100)}%`,
+                            background:"#7EE0C1" }}/>
+                        )}
+                        {otherTotal > 0 && (
+                          <div style={{ width:`${Math.round(otherTotal/grandTotal*100)}%`,
+                            background:"#CDEEF5" }}/>
+                        )}
+                      </div>
+                      <div style={{ display:"flex", gap:12, flexWrap:"wrap" }}>
+                        {[
+                          ["本業", hongyoTotal, "#006B78"],
+                          ["タダカヨ", tadakayoTotal, "#7EE0C1"],
+                          ...(otherTotal > 0 ? [["その他", otherTotal, "#CDEEF5"]] : []),
+                        ].map(([label, val, color]) => (
+                          <div key={label} style={{ display:"flex", alignItems:"center", gap:4 }}>
+                            <div style={{ width:10, height:10, borderRadius:2, background:color }}/>
+                            <span style={{ fontSize:11, color:"#4a7a80" }}>
+                              {label} {grandTotal > 0 ? Math.round(val/grandTotal*100) : 0}%
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* 月別テーブル */}
+                    {monthlyData.length > 0 && (
+                      <div>
+                        <div style={{ display:"flex", borderBottom:"1px solid rgba(158,219,232,0.3)",
+                          paddingBottom:6, marginBottom:4 }}>
+                          {["月","本業","タダカヨ","合計"].map(h => (
+                            <span key={h} style={{ flex:1, fontSize:10, color:"#4a7a80", fontWeight:"700",
+                              textAlign: h==="月" ? "left" : "right" }}>{h}</span>
+                          ))}
+                        </div>
+                        {monthlyData.map((d, i) => (
+                          <div key={d.m} style={{ display:"flex", padding:"7px 0",
+                            borderBottom:"1px solid rgba(158,219,232,0.15)" }}>
+                            <span style={{ flex:1, fontSize:12, color:"#1a3a3f", fontWeight:"600" }}>{d.m}月</span>
+                            <span style={{ flex:1, fontSize:12, color:"#006B78", textAlign:"right" }}>
+                              {d.hongyo > 0 ? fmtAmt(d.hongyo) : "-"}
+                            </span>
+                            <span style={{ flex:1, fontSize:12, color:"#2a9d6e", textAlign:"right" }}>
+                              {d.tadakayo > 0 ? fmtAmt(d.tadakayo) : "-"}
+                            </span>
+                            <span style={{ flex:1, fontSize:12, fontWeight:"700", color:"#1a3a3f", textAlign:"right" }}>
+                              {fmtAmt(d.total)}
+                            </span>
+                          </div>
+                        ))}
+                        {/* 合計行 */}
+                        <div style={{ display:"flex", padding:"10px 0",
+                          borderTop:"2px solid rgba(158,219,232,0.4)", marginTop:4 }}>
+                          <span style={{ flex:1, fontSize:13, color:"#1a3a3f", fontWeight:"700" }}>合計</span>
+                          <span style={{ flex:1, fontSize:13, color:"#006B78", textAlign:"right", fontWeight:"700" }}>
+                            {fmtAmt(hongyoTotal)}
+                          </span>
+                          <span style={{ flex:1, fontSize:13, color:"#2a9d6e", textAlign:"right", fontWeight:"700" }}>
+                            {fmtAmt(tadakayoTotal)}
+                          </span>
+                          <span style={{ flex:1, fontSize:13, fontWeight:"800", color:"#006B78", textAlign:"right" }}>
+                            {fmtAmt(grandTotal)}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+
               {/* 棒グラフ：月別収支（過去12ヶ月・金額表示付き） */}
               <div style={s.card}>
                 <p style={s.cardTitle}>月別収支（過去12ヶ月）</p>
