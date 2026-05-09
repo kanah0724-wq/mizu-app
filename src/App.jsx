@@ -251,6 +251,8 @@ export default function MizuApp() {
   const [splash, setSplash] = useState(true);
   const [aiAnalysis, setAiAnalysis] = useState("");
   const [aiLoading, setAiLoading] = useState(false);
+  const [reportYear, setReportYear] = useState(now.getFullYear());
+  const [reportMonth, setReportMonth] = useState(now.getMonth() + 1);
   const [receiptImg, setReceiptImg]   = useState(null);
   const [analyzing,  setAnalyzing]    = useState(false);
   const [pasteText,  setPasteText]    = useState("");
@@ -1305,10 +1307,10 @@ ${cats}
           const maxVal = Math.max(...months12.flatMap(d=>[d.inc, d.exp]), 1);
           const maxVal6 = Math.max(...months6.flatMap(d=>[d.inc, d.exp]), 1);
 
-          // 今月カテゴリ集計
+          // 選択月カテゴリ集計
           const curMTx = txList.filter(t => {
             const [y2, m2] = t.date.split("-").map(Number);
-            return y2 === now.getFullYear() && m2 === now.getMonth()+1;
+            return y2 === reportYear && m2 === reportMonth;
           });
           const catMap = {};
           curMTx.filter(t=>t.amount<0).forEach(t=>{
@@ -1358,6 +1360,19 @@ ${cats}
                     </div>
                   ))}
                 </div>
+              </div>
+
+              {/* レポート月ナビ */}
+              <div style={{ ...s.monthNav, paddingTop:10 }}>
+                <button style={s.arrowBtn} onClick={() => {
+                  if (reportMonth === 1) { setReportMonth(12); setReportYear(y => y-1); }
+                  else setReportMonth(m => m-1);
+                }}>‹</button>
+                <span style={s.monthLbl}>{reportYear}年{reportMonth}月</span>
+                <button style={s.arrowBtn} onClick={() => {
+                  if (reportMonth === 12) { setReportMonth(1); setReportYear(y => y+1); }
+                  else setReportMonth(m => m+1);
+                }}>›</button>
               </div>
 
               {/* 年間収入内訳 */}
@@ -1544,7 +1559,7 @@ ${cats}
 
               {/* カテゴリ別ランキング */}
               <div style={s.card}>
-                <p style={s.cardTitle}>今月のカテゴリ別支出</p>
+                <p style={s.cardTitle}>{reportYear}年{reportMonth}月のカテゴリ別支出</p>
                 {catRanking.length === 0
                   ? <p style={s.emptyMsg}>まだ支出がありません</p>
                   : catRanking.map((d,i)=>(
@@ -1629,7 +1644,7 @@ ${cats}
 
               {/* カテゴリ別明細（アコーディオン） */}
               <div style={s.card}>
-                <p style={s.cardTitle}>カテゴリ別明細（今月）</p>
+                <p style={s.cardTitle}>カテゴリ別明細（{reportYear}年{reportMonth}月）</p>
                 {catRanking.length === 0
                   ? <p style={s.emptyMsg}>まだ支出がありません</p>
                   : catRanking.map(d => {
@@ -1702,7 +1717,7 @@ ${cats}
                   .sort((a,b)=>b[1].total-a[1].total);
                 return (
                   <div style={s.card}>
-                    <p style={s.cardTitle}>支払い方法別明細（今月）</p>
+                    <p style={s.cardTitle}>支払い方法別明細（{reportYear}年{reportMonth}月）</p>
                     {payList.length === 0
                       ? <p style={s.emptyMsg}>まだ支出がありません</p>
                       : payList.map(([pay, data]) => {
@@ -1779,7 +1794,7 @@ ${cats}
                 const incTotal = incList.reduce((s,[,d])=>s+d.total, 0);
                 return (
                   <div style={s.card}>
-                    <p style={s.cardTitle}>収入内訳（今月）</p>
+                    <p style={s.cardTitle}>収入内訳（{reportYear}年{reportMonth}月）</p>
                     {incList.length === 0
                       ? <p style={s.emptyMsg}>まだ収入がありません</p>
                       : incList.map(([cat, data]) => {
