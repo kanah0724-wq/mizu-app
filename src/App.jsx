@@ -1226,6 +1226,7 @@ ${cats}
                             <div style={{ display:"flex", gap:4, flexWrap:"wrap" }}>
                               <span style={s.catBadge}>{tx.category}</span>
                               <span style={s.petBadge}>{tx.pet}</span>
+                              {tx.payment && <span style={s.payBadge}>{tx.payment}</span>}
                               <span style={{ fontSize:10, color:"#7aacb5" }}>{fmtDate(tx.date)}</span>
                             </div>
                           </div>
