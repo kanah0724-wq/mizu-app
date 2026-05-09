@@ -1764,6 +1764,9 @@ ${cats}
                                         <p style={{ fontSize:13, fontWeight:"600", color:"#1a3a3f", margin:"0 0 3px" }}>{tx.name}</p>
                                         <p style={{ fontSize:11, color:"#7aacb5", margin:0 }}>
                                           {fmtDate(tx.date)} · {tx.category} · {tx.pet}
+                                          {tx.payment && (
+                                            <span style={{ ...s.payBadge, marginLeft:4 }}>{tx.payment}</span>
+                                          )}
                                         </p>
                                       </div>
                                       <span style={{ fontSize:14, fontWeight:"700", color:"#006B78" }}>
